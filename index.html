@@ -427,7 +427,7 @@
             <!-- 登录表单 -->
             <div id="login-form">
                 <div class="form-group">
-                    <input type="text" id="login-username" placeholder="请输入账号">
+                    <input type="email" id="login-email" placeholder="请输入邮箱账号">
                 </div>
                 <div class="form-group">
                     <input type="password" id="login-password" placeholder="请输入密码">
@@ -441,15 +441,9 @@
             <!-- 找回密码表单 -->
             <div id="forgot-form" style="display: none;">
                 <div class="form-group">
-                    <input type="tel" id="forgot-phone" placeholder="请输入注册时的手机号" maxlength="11">
+                    <input type="email" id="forgot-email" placeholder="请输入注册时的邮箱">
                 </div>
-                <div class="form-group">
-                    <input type="password" id="forgot-password" placeholder="请设置新密码 (需包含大小写字母和数字)">
-                </div>
-                <div class="form-group">
-                    <input type="password" id="forgot-password-confirm" placeholder="请再次输入新密码">
-                </div>
-                <button class="btn" onclick="handleForgotPassword()">重置密码</button>
+                <button class="btn" onclick="handleForgotPassword()">发送重置密码邮件</button>
                 <div style="text-align: center; margin-top: 1rem;">
                     <a href="#" onclick="switchModalTab('login')" style="color: #666; text-decoration: none; font-size: 0.9rem;">返回登录</a>
                 </div>
@@ -458,13 +452,10 @@
             <!-- 注册表单 -->
             <div id="register-form" style="display: none;">
                 <div class="form-group">
-                    <input type="text" id="reg-username" placeholder="请设置账号">
+                    <input type="email" id="reg-email" placeholder="请输入常用邮箱">
                 </div>
                 <div class="form-group">
-                    <input type="tel" id="reg-phone" placeholder="请输入11位手机号 (用于找回密码)" maxlength="11">
-                </div>
-                <div class="form-group">
-                    <input type="password" id="reg-password" placeholder="请设置密码 (需包含大小写字母和数字)">
+                    <input type="password" id="reg-password" placeholder="请设置密码 (最少6位)">
                 </div>
                 <div class="form-group">
                     <input type="password" id="reg-password-confirm" placeholder="请再次输入密码">
@@ -498,7 +489,14 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        const supabaseUrl = 'https://onkdyspitllihmdwnrfd.supabase.co';
+        const supabaseKey = 'sb_publishable_vfaXmeZu5dCflp0UbnC6Ww_FGo1wI5R';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 如果要连接本地的 python server.py，请使用以下 API_BASE
+        // 等您部署了真实的后端，再将这里改为您的后端地址
         const API_BASE = 'http://localhost:3000/api';
 
         // 模拟商品数据
@@ -518,15 +516,39 @@
         let currentOrderId = null; // 当前正在支付的订单号
 
         // 初始化页面
-        function init() {
+        async function init() {
             renderProducts();
             updateCartUI();
+            
+            // 监听认证状态
+            supabase.auth.onAuthStateChange((event, session) => {
+                if (session && session.user) {
+                    currentUser = {
+                        id: session.user.id,
+                        email: session.user.email
+                    };
+                } else {
+                    currentUser = null;
+                }
+                if (document.getElementById('view-profile').classList.contains('active')) {
+                    renderProfile();
+                }
+            });
+            
+            // 初始获取session
+            const { data } = await supabase.auth.getSession();
+            if (data.session && data.session.user) {
+                currentUser = {
+                    id: data.session.user.id,
+                    email: data.session.user.email
+                };
+            }
         }
 
         // 切换视图
         function switchView(viewId) {
             if (viewId === 'profile' && !currentUser) {
-                showToast('请先绑定手机号登录');
+                showToast('请先登录账户查看');
                 showModal('login-modal');
                 return;
             }
@@ -624,31 +646,18 @@
         async function checkout() {
             if (cart.length === 0) return;
             if (!currentUser) {
-                showToast('请先绑定手机号登录后再结算');
+                showToast('请先登录后再结算');
                 showModal('login-modal');
                 return;
             }
 
-            // 唤起后端生成订单
-            try {
-                const res = await fetch(API_BASE + '/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, items: cart })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '生成订单失败');
-                
-                currentOrderId = data.orderId;
-                document.getElementById('pay-amount').textContent = data.totalAmount.toFixed(2);
-                
-                // 设置支付二维码占位符
-                selectPayment(currentPaymentMethod);
-                
-                showModal('payment-modal');
-            } catch (err) {
-                showToast(err.message);
-            }
+            // 模拟生成订单
+            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            currentOrderId = 'ORDER' + Date.now();
+            document.getElementById('pay-amount').textContent = totalAmount.toFixed(2);
+            
+            selectPayment(currentPaymentMethod);
+            showModal('payment-modal');
         }
 
         function showToast(message) {
@@ -699,59 +708,39 @@
         }
 
         async function handleForgotPassword() {
-            const phone = document.getElementById('forgot-phone').value;
-            const password = document.getElementById('forgot-password').value;
-            const passwordConfirm = document.getElementById('forgot-password-confirm').value;
+            const email = document.getElementById('forgot-email').value;
 
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                showToast('请输入正确的11位手机号');
-                return;
-            }
-            if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-                showToast('新密码需包含大小写字母和数字');
-                return;
-            }
-            if (password !== passwordConfirm) {
-                showToast('两次输入的新密码不一致');
+            if (!email || !/\S+@\S+\.\S+/.test(email)) {
+                showToast('请输入正确的邮箱格式');
                 return;
             }
 
             try {
-                const res = await fetch(API_BASE + '/reset-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, password })
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin,
                 });
                 
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || '重置密码失败');
-                }
+                if (error) throw error;
                 
-                showToast('密码重置成功，请重新登录');
+                showToast('重置邮件已发送，请前往邮箱查收');
                 switchModalTab('login');
                 document.getElementById('login-password').value = '';
             } catch (err) {
-                showToast(err.message);
+                showToast('发送失败: ' + err.message);
             }
         }
 
         async function handleRegister() {
-            const username = document.getElementById('reg-username').value;
-            const phone = document.getElementById('reg-phone').value;
+            const email = document.getElementById('reg-email').value;
             const password = document.getElementById('reg-password').value;
             const passwordConfirm = document.getElementById('reg-password-confirm').value;
 
-            if (!username) {
-                showToast('请输入账号');
+            if (!email || !/\S+@\S+\.\S+/.test(email)) {
+                showToast('请输入正确的邮箱格式');
                 return;
             }
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                showToast('请输入正确的11位手机号');
-                return;
-            }
-            if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-                showToast('密码需包含大小写字母和数字');
+            if (password.length < 6) {
+                showToast('密码至少需要6位');
                 return;
             }
             if (password !== passwordConfirm) {
@@ -760,45 +749,39 @@
             }
 
             try {
-                const res = await fetch(API_BASE + '/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, phone, password })
-                }); 
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
                 
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || '注册失败');
-                }
+                if (error) throw error;
                 
-                showToast('注册成功，请登录');
+                // 根据Supabase设置，可能需要进入邮箱点击验证链接，如果不需要会直接登录
+                showToast('注册请求成功！(如果未登录，请去邮箱激活)');
                 switchModalTab('login');
-                document.getElementById('login-username').value = username;
+                document.getElementById('login-email').value = email;
             } catch (err) {
-                showToast(err.message);
+                showToast('注册失败: ' + err.message);
             }
         }
 
         async function verifyLogin() {
-            const username = document.getElementById('login-username').value;
+            const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            if (!username || !password) {
-                showToast('请输入账号和密码');
+            if (!email || !password) {
+                showToast('请输入邮箱和密码');
                 return;
             }
 
             try {
-                const res = await fetch(API_BASE + '/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
                 });
 
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '登录失败');
+                if (error) throw error;
 
-                currentUser = { phone: data.phone, id: data.id, username: data.username };
                 showToast('登录成功！');
                 closeModal('login-modal');
                 
@@ -808,7 +791,7 @@
                     switchView('profile');
                 }
             } catch (err) {
-                showToast(err.message);
+                showToast('登录失败: ' + err.message);
             }
         }
 
@@ -828,29 +811,27 @@
         async function processPayment() {
             if (!currentOrderId) return;
             
-            try {
-                const res = await fetch(API_BASE + '/pay/callback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId: currentOrderId, status: 'SUCCESS' })
-                });
-                
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || '支付回调失败');
-                }
-                
-                showToast(`支付成功！第三方网关已回调`);
-                closeModal('payment-modal');
-                currentOrderId = null;
-                
-                cart = [];
-                updateCartUI();
-                
-                switchView('profile');
-            } catch (err) {
-                showToast(err.message);
-            }
+            // 模拟支付成功，保存到本地历史订单
+            const newOrder = {
+                id: currentOrderId,
+                date: new Date().toLocaleString(),
+                items: [...cart],
+                total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                status: '已支付'
+            };
+            
+            let history = JSON.parse(localStorage.getItem('orders_' + currentUser.id) || '[]');
+            history.unshift(newOrder);
+            localStorage.setItem('orders_' + currentUser.id, JSON.stringify(history));
+
+            showToast(`支付成功！(模拟真实支付)`);
+            closeModal('payment-modal');
+            currentOrderId = null;
+            
+            cart = [];
+            updateCartUI();
+            
+            switchView('profile');
         }
 
         async function renderProfile() {
@@ -860,8 +841,7 @@
                 return;
             }
 
-            const maskedPhone = currentUser.phone ? currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '未知手机号';
-            const displayName = currentUser.username || '用户 ' + maskedPhone;
+            const displayName = currentUser.email.split('@')[0];
             const initial = displayName.substring(0, 1).toUpperCase();
             
             profileSection.innerHTML = `
@@ -870,8 +850,8 @@
                         <div class="avatar">${initial}</div>
                         <div style="flex: 1;">
                             <h2>${displayName}</h2>
-                            <p style="color: #666;">手机号: ${maskedPhone}</p>
-                            <p style="color: #666;">ID: ${currentUser.id}</p>
+                            <p style="color: #666;">邮箱: ${currentUser.email}</p>
+                            <p style="color: #666;">UID: ${currentUser.id}</p>
                             <p style="color: #666;">等级: 注册会员</p>
                         </div>
                         <button class="btn" style="width: auto; background-color: #f44336; padding: 0.5rem 1rem;" onclick="logout()">退出登录</button>
@@ -883,35 +863,31 @@
                 </div>
             `;
 
-            try {
-                const res = await fetch(API_BASE + '/orders/' + currentUser.id);
-                const orders = await res.json();
-                
-                const container = document.getElementById('orders-list-container');
-                if (orders.length === 0) {
-                    container.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">暂无历史订单，快去购物吧！</p>';
-                } else {
-                    container.innerHTML = orders.map(order => `
-                        <div class="order-item">
-                            <div>
-                                <strong>订单号: ${order.id}</strong>
-                                <p style="color: #666; font-size: 0.9rem;">时间: ${order.date}</p>
-                                <p style="color: #666; font-size: 0.9rem;">包含: ${order.items[0].name} ${order.items.length > 1 ? `等 ${order.items.reduce((s,i)=>s+i.quantity,0)} 件商品` : ''}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span style="color: green; font-weight: bold;">${order.status}</span>
-                                <p style="font-weight: bold; margin-top: 0.5rem; font-size: 1.1rem;">¥${order.total.toFixed(2)}</p>
-                            </div>
+            // 从本地加载模拟订单
+            const history = JSON.parse(localStorage.getItem('orders_' + currentUser.id) || '[]');
+            const container = document.getElementById('orders-list-container');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">暂无历史订单，快去购物吧！</p>';
+            } else {
+                container.innerHTML = history.map(order => `
+                    <div class="order-item">
+                        <div>
+                            <strong>订单号: ${order.id}</strong>
+                            <p style="color: #666; font-size: 0.9rem;">时间: ${order.date}</p>
+                            <p style="color: #666; font-size: 0.9rem;">包含: ${order.items[0].name} ${order.items.length > 1 ? `等 ${order.items.reduce((s,i)=>s+i.quantity,0)} 件商品` : ''}</p>
                         </div>
-                    `).join('');
-                }
-            } catch(err) {
-                document.getElementById('orders-list-container').innerHTML = '<p style="color: red;">拉取订单失败</p>';
+                        <div style="text-align: right;">
+                            <span style="color: green; font-weight: bold;">${order.status}</span>
+                            <p style="font-weight: bold; margin-top: 0.5rem; font-size: 1.1rem;">¥${order.total.toFixed(2)}</p>
+                        </div>
+                    </div>
+                `).join('');
             }
         }
 
-        function logout() {
-            currentUser = null;
+        async function logout() {
+            await supabase.auth.signOut();
             showToast('已退出登录');
             switchView('products');
         }
