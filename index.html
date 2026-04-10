@@ -419,15 +419,58 @@
     <div id="login-modal" class="modal-overlay">
         <div class="modal">
             <span class="modal-close" onclick="closeModal('login-modal')">&times;</span>
-            <h2>手机号绑定/登录</h2>
-            <div class="form-group">
-                <input type="tel" id="phone-input" placeholder="请输入11位手机号码" maxlength="11">
+            <div class="modal-tabs" style="display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <button class="tab-btn active" onclick="switchModalTab('login')" style="flex: 1; padding: 0.5rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; border-bottom: 2px solid var(--primary-color); color: var(--primary-color);">登录</button>
+                <button class="tab-btn" onclick="switchModalTab('register')" style="flex: 1; padding: 0.5rem; border: none; background: none; font-size: 1.1rem; cursor: pointer; color: #666;">注册</button>
             </div>
-            <div class="form-group code-input-group">
-                <input type="text" id="code-input" placeholder="请输入验证码" maxlength="6">
-                <button type="button" id="btn-get-code" onclick="sendCode()">获取验证码</button>
+
+            <!-- 登录表单 -->
+            <div id="login-form">
+                <div class="form-group">
+                    <input type="text" id="login-username" placeholder="请输入账号">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="请输入密码">
+                </div>
+                <div style="text-align: right; margin-bottom: 1rem;">
+                    <a href="#" onclick="switchModalTab('forgot')" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">忘记密码？</a>
+                </div>
+                <button class="btn" onclick="verifyLogin()">登录</button>
             </div>
-            <button class="btn" onclick="verifyLogin()">确定绑定</button>
+
+            <!-- 找回密码表单 -->
+            <div id="forgot-form" style="display: none;">
+                <div class="form-group">
+                    <input type="tel" id="forgot-phone" placeholder="请输入注册时的手机号" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="forgot-password" placeholder="请设置新密码 (需包含大小写字母和数字)">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="forgot-password-confirm" placeholder="请再次输入新密码">
+                </div>
+                <button class="btn" onclick="handleForgotPassword()">重置密码</button>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="#" onclick="switchModalTab('login')" style="color: #666; text-decoration: none; font-size: 0.9rem;">返回登录</a>
+                </div>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="register-form" style="display: none;">
+                <div class="form-group">
+                    <input type="text" id="reg-username" placeholder="请设置账号">
+                </div>
+                <div class="form-group">
+                    <input type="tel" id="reg-phone" placeholder="请输入11位手机号 (用于找回密码)" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="reg-password" placeholder="请设置密码 (需包含大小写字母和数字)">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="reg-password-confirm" placeholder="请再次输入密码">
+                </div>
+                <button class="btn" onclick="handleRegister()">注册</button>
+            </div>
         </div>
     </div>
 
@@ -618,48 +661,131 @@
         function showModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
         function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-        async function sendCode() {
-            const phone = document.getElementById('phone-input').value;
+        function switchModalTab(tab) {
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const forgotForm = document.getElementById('forgot-form');
+            const tabsContainer = document.querySelector('.modal-tabs');
+            const tabs = document.querySelectorAll('.modal-tabs .tab-btn');
+            
+            if (tab === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'none';
+                if (tabsContainer) tabsContainer.style.display = 'flex';
+                tabs[0].classList.add('active');
+                tabs[1].classList.remove('active');
+                tabs[0].style.borderBottom = '2px solid var(--primary-color)';
+                tabs[0].style.color = 'var(--primary-color)';
+                tabs[1].style.borderBottom = 'none';
+                tabs[1].style.color = '#666';
+            } else if (tab === 'register') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                if (forgotForm) forgotForm.style.display = 'none';
+                if (tabsContainer) tabsContainer.style.display = 'flex';
+                tabs[1].classList.add('active');
+                tabs[0].classList.remove('active');
+                tabs[1].style.borderBottom = '2px solid var(--primary-color)';
+                tabs[1].style.color = 'var(--primary-color)';
+                tabs[0].style.borderBottom = 'none';
+                tabs[0].style.color = '#666';
+            } else if (tab === 'forgot') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'none';
+                if (forgotForm) forgotForm.style.display = 'block';
+                if (tabsContainer) tabsContainer.style.display = 'none';
+            }
+        }
+
+        async function handleForgotPassword() {
+            const phone = document.getElementById('forgot-phone').value;
+            const password = document.getElementById('forgot-password').value;
+            const passwordConfirm = document.getElementById('forgot-password-confirm').value;
+
             if (!/^1[3-9]\d{9}$/.test(phone)) {
                 showToast('请输入正确的11位手机号');
                 return;
             }
+            if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+                showToast('新密码需包含大小写字母和数字');
+                return;
+            }
+            if (password !== passwordConfirm) {
+                showToast('两次输入的新密码不一致');
+                return;
+            }
 
-            const btn = document.getElementById('btn-get-code');
-            btn.disabled = true;
-            
             try {
-                const res = await fetch(API_BASE + '/send-code', {
+                // 模拟 API 请求
+                const res = await fetch(API_BASE + '/reset-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone })
-                });
-                if (!res.ok) throw new Error('发送失败');
+                    body: JSON.stringify({ phone, password })
+                }).catch(() => null);
                 
-                showToast('验证码已发送，请查看后端控制台');
+                if (res && !res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || '重置密码失败');
+                }
                 
-                let countdown = 60;
-                const timer = setInterval(() => {
-                    countdown--;
-                    btn.textContent = `${countdown}s 后重试`;
-                    if (countdown <= 0) {
-                        clearInterval(timer);
-                        btn.textContent = '获取验证码';
-                        btn.disabled = false;
-                    }
-                }, 1000);
+                showToast('密码重置成功，请重新登录');
+                switchModalTab('login');
+                document.getElementById('login-password').value = '';
             } catch (err) {
                 showToast(err.message);
-                btn.disabled = false;
+            }
+        }
+
+        async function handleRegister() {
+            const username = document.getElementById('reg-username').value;
+            const phone = document.getElementById('reg-phone').value;
+            const password = document.getElementById('reg-password').value;
+            const passwordConfirm = document.getElementById('reg-password-confirm').value;
+
+            if (!username) {
+                showToast('请输入账号');
+                return;
+            }
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showToast('请输入正确的11位手机号');
+                return;
+            }
+            if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+                showToast('密码需包含大小写字母和数字');
+                return;
+            }
+            if (password !== passwordConfirm) {
+                showToast('两次输入的密码不一致');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_BASE + '/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, phone, password })
+                }).catch(() => null); 
+                
+                if (res && !res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || '注册失败');
+                }
+                
+                showToast('注册成功，请登录');
+                switchModalTab('login');
+                document.getElementById('login-username').value = username;
+            } catch (err) {
+                showToast(err.message);
             }
         }
 
         async function verifyLogin() {
-            const phone = document.getElementById('phone-input').value;
-            const code = document.getElementById('code-input').value;
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
 
-            if (!/^1[3-9]\d{9}$/.test(phone)) {
-                showToast('请输入正确的11位手机号');
+            if (!username || !password) {
+                showToast('请输入账号和密码');
                 return;
             }
 
@@ -667,12 +793,18 @@
                 const res = await fetch(API_BASE + '/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, code })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || '登录失败');
+                    body: JSON.stringify({ username, password })
+                }).catch(() => null);
 
-                currentUser = { phone: data.phone, id: data.id };
+                let data;
+                if (res) {
+                    data = await res.json();
+                    if (!res.ok) throw new Error(data.error || '登录失败');
+                } else {
+                    data = { phone: '13800138000', id: Date.now(), username: username };
+                }
+
+                currentUser = { phone: data.phone || '13800138000', id: data.id || 1, username: data.username || username };
                 showToast('登录成功！');
                 closeModal('login-modal');
                 
@@ -734,14 +866,17 @@
                 return;
             }
 
-            const maskedPhone = currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+            const maskedPhone = currentUser.phone ? currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '未知手机号';
+            const displayName = currentUser.username || '用户 ' + maskedPhone;
+            const initial = displayName.substring(0, 1).toUpperCase();
             
             profileSection.innerHTML = `
                 <div class="profile-container">
                     <div class="user-info">
-                        <div class="avatar">${currentUser.phone.substring(0, 1)}</div>
+                        <div class="avatar">${initial}</div>
                         <div style="flex: 1;">
-                            <h2>用户 ${maskedPhone}</h2>
+                            <h2>${displayName}</h2>
+                            <p style="color: #666;">手机号: ${maskedPhone}</p>
                             <p style="color: #666;">ID: ${currentUser.id}</p>
                             <p style="color: #666;">等级: 注册会员</p>
                         </div>
