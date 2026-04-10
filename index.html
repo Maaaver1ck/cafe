@@ -717,14 +717,13 @@
             }
 
             try {
-                // 模拟 API 请求
                 const res = await fetch(API_BASE + '/reset-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, password })
-                }).catch(() => null);
+                });
                 
-                if (res && !res.ok) {
+                if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.error || '重置密码失败');
                 }
@@ -765,9 +764,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, phone, password })
-                }).catch(() => null); 
+                }); 
                 
-                if (res && !res.ok) {
+                if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.error || '注册失败');
                 }
@@ -794,17 +793,12 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
-                }).catch(() => null);
+                });
 
-                let data;
-                if (res) {
-                    data = await res.json();
-                    if (!res.ok) throw new Error(data.error || '登录失败');
-                } else {
-                    data = { phone: '13800138000', id: Date.now(), username: username };
-                }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '登录失败');
 
-                currentUser = { phone: data.phone || '13800138000', id: data.id || 1, username: data.username || username };
+                currentUser = { phone: data.phone, id: data.id, username: data.username };
                 showToast('登录成功！');
                 closeModal('login-modal');
                 
