@@ -493,7 +493,7 @@
     <script>
         const supabaseUrl = 'https://onkdyspitllihmdwnrfd.supabase.co';
         const supabaseKey = 'sb_publishable_vfaXmeZu5dCflp0UbnC6Ww_FGo1wI5R';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // 如果要连接本地的 python server.py，请使用以下 API_BASE
         // 等您部署了真实的后端，再将这里改为您的后端地址
@@ -521,7 +521,7 @@
             updateCartUI();
             
             // 监听认证状态
-            supabase.auth.onAuthStateChange((event, session) => {
+            supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (session && session.user) {
                     currentUser = {
                         id: session.user.id,
@@ -536,7 +536,7 @@
             });
             
             // 初始获取session
-            const { data } = await supabase.auth.getSession();
+            const { data } = await supabaseClient.auth.getSession();
             if (data.session && data.session.user) {
                 currentUser = {
                     id: data.session.user.id,
@@ -716,7 +716,7 @@
             }
 
             try {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin,
                 });
                 
@@ -749,7 +749,7 @@
             }
 
             try {
-                const { data, error } = await supabase.auth.signUp({
+                const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
                     password: password
                 });
@@ -775,7 +775,7 @@
             }
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -887,7 +887,7 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             showToast('已退出登录');
             switchView('products');
         }
