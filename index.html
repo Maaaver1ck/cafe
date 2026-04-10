@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简商城 Demo</title>
+    <style>
+        /* 基础样式与重置 */
+        :root {
+            --primary-color: #007bff;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        /* 导航栏 */
+        header {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .nav-links button {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            margin-left: 1rem;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-links button:hover, .nav-links button.active {
+            background-color: #e9ecef;
+            color: var(--primary-color);
+        }
+
+        /* 徽章 (用于购物车数量) */
+        .badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin-left: 0.3rem;
+            display: none; /* 默认隐藏，有数量时显示 */
+        }
+
+        /* 页面容器 */
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        /* 隐藏不同视图 */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 商品列表界面 --- */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            background-color: #eee;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            object-fit: cover;
+        }
+
+        .product-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-price {
+            color: #e53935;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* --- 购物车界面 --- */
+        .cart-list {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .cart-item-img {
+            width: 50px;
+            height: 50px;
+            background-color: #eee;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .cart-controls button {
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+        }
+
+        .cart-summary {
+            margin-top: 2rem;
+            text-align: right;
+            font-size: 1.2rem;
+        }
+
+        .cart-total {
+            color: #e53935;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        /* --- 个人主页界面 --- */
+        .profile-container {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .order-history h3 {
+            margin-bottom: 1rem;
+        }
+
+        .order-item {
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 提示框 */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            display: none;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo" onclick="switchView('products')">极简商城 Demo</div>
+            <div class="nav-links">
+                <button onclick="switchView('products')" id="nav-products" class="active">商品首页</button>
+                <button onclick="switchView('cart')" id="nav-cart">购物车 <span id="cart-badge" class="badge">0</span></button>
+                <button onclick="switchView('profile')" id="nav-profile">个人主页</button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 商品列表界面 -->
+        <section id="view-products" class="view-section active">
+            <h2>热门商品</h2>
+            <div class="product-grid" id="product-container">
+                <!-- 商品卡片将由 JS 动态生成 -->
+            </div>
+        </section>
+
+        <!-- 购物车界面 -->
+        <section id="view-cart" class="view-section">
+            <h2>我的购物车</h2>
+            <div id="cart-empty-message" style="display: none; text-align: center; padding: 2rem; color: #777;">
+                您的购物车是空的，快去挑选商品吧！
+            </div>
+            <div id="cart-content">
+                <div class="cart-list" id="cart-items-container">
+                    <!-- 购物车项目由 JS 动态生成 -->
+                </div>
+                <div class="cart-summary">
+                    <p>总计: <span class="cart-total">¥<span id="cart-total-price">0.00</span></span></p>
+                    <button class="btn" style="width: auto; padding: 0.8rem 2rem; margin-top: 1rem;" onclick="checkout()">去结算</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 个人主页界面 -->
+        <section id="view-profile" class="view-section">
+            <div class="profile-container">
+                <div class="user-info">
+                    <div class="avatar">U</div>
+                    <div>
+                        <h2>测试用户 (Demo)</h2>
+                        <p>ID: 888888</p>
+                        <p>等级: 钻石会员</p>
+                    </div>
+                </div>
+                <div class="order-history">
+                    <h3>历史订单 (模拟)</h3>
+                    <div class="order-item">
+                        <div>
+                            <strong>订单号: #ORD-2026041001</strong>
+                            <p style="color: #666; font-size: 0.9rem;">包含: 机械键盘 等2件商品</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="color: green;">已完成</span>
+                            <p style="font-weight: bold; margin-top: 0.5rem;">¥798.00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast">提示信息</div>
+
+    <script>
+        // 模拟商品数据
+        const mockProducts = [
+            { id: 1, name: "高端机械键盘", price: 599.00, image: "https://via.placeholder.com/250x200?text=Keyboard" },
+            { id: 2, name: "无线降噪耳机", price: 1299.00, image: "https://via.placeholder.com/250x200?text=Headphones" },
+            { id: 3, name: "电竞游戏鼠标", price: 299.00, image: "https://via.placeholder.com/250x200?text=Mouse" },
+            { id: 4, name: "27寸4K显示器", price: 1999.00, image: "https://via.placeholder.com/250x200?text=Monitor" },
+            { id: 5, name: "智能手表", price: 899.00, image: "https://via.placeholder.com/250x200?text=Smartwatch" },
+            { id: 6, name: "便携移动电源", price: 129.00, image: "https://via.placeholder.com/250x200?text=Powerbank" }
+        ];
+
+        // 购物车状态
+        let cart = [];
+
+        // 初始化页面
+        function init() {
+            renderProducts();
+            updateCartUI();
+        }
+
+        // 切换视图
+        function switchView(viewId) {
+            // 隐藏所有视图
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            // 取消导航激活状态
+            document.querySelectorAll('.nav-links button').forEach(el => el.classList.remove('active'));
+
+            // 显示目标视图
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            document.getElementById(`nav-${viewId}`).classList.add('active');
+        }
+
+        // 渲染商品列表
+        function renderProducts() {
+            const container = document.getElementById('product-container');
+            container.innerHTML = mockProducts.map(product => `
+                <div class="product-card">
+                    <img src="${product.image}" alt="${product.name}" class="product-image">
+                    <h3 class="product-title">${product.name}</h3>
+                    <p class="product-price">¥${product.price.toFixed(2)}</p>
+                    <button class="btn" onclick="addToCart(${product.id})">加入购物车</button>
+                </div>
+            `).join('');
+        }
+
+        // 添加到购物车
+        function addToCart(productId) {
+            const product = mockProducts.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            showToast(`已将 ${product.name} 加入购物车`);
+            updateCartUI();
+        }
+
+        // 从购物车移除
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartUI();
+        }
+
+        // 更新购物车数量
+        function updateQuantity(productId, delta) {
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    removeFromCart(productId);
+                } else {
+                    updateCartUI();
+                }
+            }
+        }
+
+        // 更新购物车界面和数据
+        function updateCartUI() {
+            // 更新导航栏角标
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const badge = document.getElementById('cart-badge');
+            if (totalItems > 0) {
+                badge.style.display = 'inline-block';
+                badge.textContent = totalItems;
+            } else {
+                badge.style.display = 'none';
+            }
+
+            // 更新购物车列表
+            const container = document.getElementById('cart-items-container');
+            const cartContent = document.getElementById('cart-content');
+            const emptyMsg = document.getElementById('cart-empty-message');
+
+            if (cart.length === 0) {
+                cartContent.style.display = 'none';
+                emptyMsg.style.display = 'block';
+            } else {
+                cartContent.style.display = 'block';
+                emptyMsg.style.display = 'none';
+
+                container.innerHTML = cart.map(item => `
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                            <div>
+                                <div style="font-weight:bold;">${item.name}</div>
+                                <div style="color: #e53935;">¥${item.price.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="cart-controls">
+                            <button onclick="updateQuantity(${item.id}, -1)">-</button>
+                            <span style="margin: 0 10px;">${item.quantity}</span>
+                            <button onclick="updateQuantity(${item.id}, 1)">+</button>
+                            <button style="margin-left: 1rem; color: #dc3545; border: none; background: none; text-decoration: underline;" onclick="removeFromCart(${item.id})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 更新总价
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cart-total-price').textContent = totalPrice.toFixed(2);
+        }
+
+        // 模拟结算
+        function checkout() {
+            if (cart.length === 0) return;
+            alert(`模拟结算成功！总计支付 ¥${document.getElementById('cart-total-price').textContent}`);
+            cart = [];
+            updateCartUI();
+            switchView('profile'); // 结算后跳转到个人主页
+        }
+
+        // 显示提示框
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+
+        // 运行初始化
+        init();
+    </script>
+</body>
+</html>
